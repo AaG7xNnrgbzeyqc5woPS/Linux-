@@ -1,5 +1,65 @@
 #!/bin/bash
 #
+####################################################################
+#   快速测试
+###curl工具###
+#curl -fsSL https://raw.githubusercontent.com/AaG7xNnrgbzeyqc5woPS/linux-log/master/LemonBench.sh | bash -s fast
+###wget工具###
+#wget -qO- https://raw.githubusercontent.com/AaG7xNnrgbzeyqc5woPS/linux-log/master/LemonBench.sh | bash -s fast
+#
+#完整测试
+###curl工具###
+#curl -fsSL https://raw.githubusercontent.com/AaG7xNnrgbzeyqc5woPS/linux-log/master/LemonBench.sh | bash -s full
+###wget工具###
+#wget -qO- https://raw.githubusercontent.com/AaG7xNnrgbzeyqc5woPS/linux-log/master/LemonBench.sh | bash -s full
+#
+######################################################################
+#
+#LemonBench介绍
+#
+#LemonBench工具(别名LBench、柠檬Bench)，是一款针对Linux服务器设计的服务器性能测试工具。通过综合测试，可以快速评估服务器的综合性能，为使用者提供服务器硬件配置信息。
+#
+#LemonBench目前涵盖了如下测试：
+#
+#服务器基础信息 (CPU信息/内存信息/Swap信息/磁盘空间信息/网络信息等)
+#
+#流媒体解锁测试 (目前支持HBO Now/动画疯/B站港澳台/B站台湾限定)
+#
+#系统性能测试 (CPU/内存/磁盘)
+#
+#Speedtest网速测试 (本地到最近源及国内各地域不同线路的网速)
+#
+#路由追踪测试 (追踪到国内和海外不同线路的路由信息)
+#
+#LemonBench使用起来非常简单，只需要复制粘贴再来个回车就可以轻松启动测试。
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
 # #------------------------------------------------------------------#
 # |   LemonBench 服务器测试工具      LemonBench Server Test Utility   |
 # #------------------------------------------------------------------#
