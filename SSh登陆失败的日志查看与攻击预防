@@ -1,0 +1,262 @@
+
+https://my.oschina.net/pwd/blog/363278
+
+
+之前因为服务器里没有什么重要的东西，也就一直没有关注过登陆日志，刚才在配置ssh chroot出现错误是才去看的auth.log，记得这个文件就是个登陆日志，而且我之前偶尔查看时都很少内容，所以就直接cat查看了，谁知道竟然是满屏满屏的，"Failed password for root XXX.XXX.XXX.XXX"，等了将近一分钟仍然不见底，最后只好Ctrl+c提前结束，然后写条命令了下，看看究竟有多少个IP在暴利破解我的root：
+grep "Failed password for root" /var/log/auth.log | awk '{print $11}' | sort | uniq -c | sort -nr | more
+
+命令很简单，也就不过多做解释了，直接看看结果：
+4540 86.122.189.166
+855 61.1.84.12
+576 61.164.145.33
+304 184.32.139.224
+284 200.195.151.82
+222 110.234.129.177
+210 200.62.142.142
+202 213.152.176.153
+202 129.121.32.94
+42 122.228.197.134
+38 119.161.145.215
+30 79.174.68.97
+15 82.166.223.235
+13 76.28.73.184
+1 119.68.246.2
+
+最多的4000多次，还行，估计离解出我的密码还有段距离，可是为了防范未然，也让我的auth.log文件能清净一些，索性就加些防范措施。
+至于预防措施到时多种多样，我这里说几种我刚才尝试过的，或者尝试了放弃的
+1、修改SSh端口，禁止root登陆
+
+
+这个比较简单，只需要修改/etc/ssh/sshd_config文件就好了
+sudo vi /etc/ssh/sshd_config
+Port 4484
+#这里就该为你认为别人猜不到的端口号
+PermitRootLogin no
+#这里改为no即为禁止root登陆
+
+最后保存，重启
+sudo /etc/init.d/ssh restart
+
+2、禁用密码登陆，仅用证书密钥登陆
+
+
+在客户端生成密钥
+ssh-keygen -t rsa
+
+把公钥拷贝至服务器
+ssh-copy-id -i .ssh/id_rsa.pub server
+
+也可以手动将.shh/id_rsa.pub拷贝至服务器用户目录的.ssh中，记得修改访问权限
+scp .shh/id_rsa.pub server:~/.ssh
+
+在服务器中
+cd ./.ssh/
+mv id_rsa.pub authorized_keys
+chmod 400 authorized_keys
+
+最后修改/etc/ssh/sshd_config
+RSAAuthentication yes
+#RSA认证
+PubkeyAuthentication yes
+#开启公钥验证
+AuthorizedKeysFile    .ssh/authorized_keys
+#验证文件路径 
+PasswordAuthentication no
+#禁止密码认证
+PermitEmptyPasswords no
+#禁止空密码
+UsePAM no
+#禁用PAM
+
+最后保存，重启
+sudo /etc/init.d/ssh restart
+
+3、安装denyhosts
+
+暴露在网络上的主机都是有风险的，其中一种风险就是ssh暴力破解攻击（ssh brute force attack）。
+
+请先看看你的Linux主机的 /var/log/secure 文件的内容，如果你发现里面记录有无数条用各种甚至在你的系统中都不存在的用户名来尝试登录你的系统的日志，那么你就要当心了，这很有可能是别人在用工具不断尝试破解你的登录帐号。
+
+如果你的密码不够复杂，那么很可能你会遭殃。防范的方法有很多种，这里介绍一种用第三方软件来实现防御的方法。
+
+据网上的资源介绍，有下面几个防御软件：
+
+sshfilter http://www.csc.liv.ac.uk/~greg/sshdfilter/
+
+Fail2Ban  http://fail2ban.sourceforge.net/
+
+DenyHosts http://denyhosts.sourceforge.net/
+
+ 
+
+这几个软件我没有全部接触过，仅用了DenyHosts。下面就说一下DenyHosts的安装和使用。
+
+ 
+
+ 
+
+到这里去下载：http://sourceforge.net/projects/denyhosts/files/
+
+下载.tar.gz的安装包就可以了，安装很方便。
+
+写本文的时候，其版本为2.6（DenyHosts-2.6.tar.gz）。
+
+ 
+
+（1）解压安装包：
+
+tar zxf DenyHosts-2.6.tar.gz
+
+ 
+
+（2）进入解压出来的目录下，然后再安装：
+
+cd DenyHosts-2.6/
+
+python setup.py install
+
+（会输出一堆信息，不用理会它）
+
+ 
+
+（3）为了能开机自动启动，在系统中做一个名为“denyhosts”的符号链接，然后添加到启动项中：
+
+ln -s /usr/share/denyhosts/daemon-control-dist /etc/init.d/denyhosts
+
+chkconfig --add denyhosts
+
+ 
+
+（5）到 /usr/share/denyhosts/ 目录下，将配置文件denyhosts.cfg-dist复制为一个新的配置文件——后面会说为什么要这样做：
+
+cd /usr/share/denyhosts
+
+cp denyhosts.cfg-dist denyhosts.cfg
+
+ 
+
+（6）修改配置文件：
+
+vi denyhosts.cfg
+
+配置文件的内容很长，但是我们没有必要修改所有的参数，很多都只要使用默认就够了，但是有一些是必须要改的，部分说明如下：
+
+ 
+
+    # ssh日志文件，对RedHat来说，就是这个文件。对其他系统来说，可能不是该文件，请参考详细的说明
+
+    SECURE_LOG = /var/log/secure
+
+     
+
+    # 描述禁止登录的文件
+
+    HOSTS_DENY = /etc/hosts.deny
+
+     
+
+    # 当DenyHosts以--purge参数调用时，比这个参数设置的值久的时间的HOSTS_DENY记录将被删除（该参数留空的话，表示从不会清除任何HOSTS_DENY记录）
+
+    PURGE_DENY = 
+
+     
+
+    # 发生block的情况时，需要block的服务名
+
+    BLOCK_SERVICE  = sshd
+
+     
+
+    # 最多允许系统中不存在的用户登录失败多少次
+
+    DENY_THRESHOLD_INVALID = 2
+
+     
+
+    # 最多允许有效用户登录失败多少次
+
+    DENY_THRESHOLD_VALID = 3
+
+     
+
+    # 最多允许root登录失败多少次
+
+    DENY_THRESHOLD_ROOT = 3
+
+     
+
+    # 是否做域名反解析
+
+    HOSTNAME_LOOKUP=NO
+
+     
+
+    # 用来接收报警信息的邮箱
+
+    ADMIN_EMAIL = xxx@163.com
+
+     
+
+    # smtp服务器地址，当你需要DenyHosts发邮件给你报警的时候，要设置这个参数
+
+    SMTP_HOST = smtp.163.com
+
+     
+
+    # smtp服务器端口
+
+    SMTP_PORT = 25
+
+     
+
+    # 登录邮箱帐户的用户名
+
+    SMTP_USERNAME=usr
+
+     
+
+    # 登录邮箱帐户的密码
+
+    SMTP_PASSWORD=pas
+
+     
+
+    # 邮件中的发件人信息
+
+    SMTP_FROM = DenyHosts <xxx@163.com>
+
+     
+
+    # 报警邮件的标题
+
+    SMTP_SUBJECT = DenyHosts Report
+
+ 
+
+其他的基本上不用改了。
+
+文章来源：http://www.codelast.com/
+
+（7）启动服务：
+
+/etc/init.d/denyhosts start
+
+（从输出的信息来看，这种启动方法实际上是调用了如下的命令：
+
+/usr/bin/denyhosts.py --daemon --config=/usr/share/denyhosts/denyhosts.cfg
+
+可见，它使用的配置文件是/usr/share/denyhosts/denyhosts.cfg ，这也是为什么我们在上面的步骤中要把默认的配置文件复制为一个新的配置文件“denyhosts.cfg”的原因了。）
+
+ 
+
+（8）测试：
+
+从另一台服务器上，以一个不存在的用户名和密码来ssh登录部署了的DenyHosts服务器，如果你在DenyHosts的配置文件中设置的是错误地尝试一次就被block，那么你就会发现你这台登录的客户端服务器被block了。并且，在部署了DenyHosts的服务器上，查看文件/etc/hosts.deny 的内容，会发现多了一条记录，正是屏蔽了登录者的那一条记录，这就说明生效了。
+
+ 
+
+文章来源：http://www.codelast.com/
+
+备注：
+
+如果一台服务器被误block了，可以在部署DenyHosts的服务器上，将文件 /etc/hosts.deny 中相应的条目删掉，再重启DenyHosts服务（/etc/init.d/denyhosts restart），就可以解除block了。
